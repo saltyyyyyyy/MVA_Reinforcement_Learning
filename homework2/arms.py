@@ -60,6 +60,7 @@ class ArmExp(AbstractArm):
     # http://lagrange.math.siu.edu/Olive/ch4.pdf
     def __init__(self, L, B=1., random_state=0):
         """
+        pdf =
         Args:
             L (float): parameter of the exponential distribution
             B (float): upper bound of the distribution (lower is 0)
@@ -68,17 +69,27 @@ class ArmExp(AbstractArm):
         assert B > 0.
         self.L = L
         self.B = B
-        super(ArmExp, self).__init__(mean=1 / (L * (1 - np.exp(-L * B))),
+        v_m = (1. - np.exp(-B*L)*(1. + B*L)) / L
+        super(ArmExp, self).__init__(mean=v_m / (1. - np.exp(-L * B)),
                                      variance=None,  # compute it yourself!
                                      random_state=random_state)
+
+    def cdf(self, x):
+        cdf = lambda y: 1. - np.exp(-self.L*y)
+        truncated_cdf = (cdf(x) - cdf(0)) / (cdf(self.B) - cdf(0))
+        return truncated_cdf
+
+    def inv_cdf(self, q):
+        assert 0<= q <= 1.
+        v = - np.log(1. - (1. - np.exp(- self.L * self.B)) * q) / self.L
+        return v
 
     def sample(self):
         # Inverse transform sampling
         # https://en.wikipedia.org/wiki/Inverse_transform_sampling
-        u = self.local_random.rand(1)
-        x = - np.log(1. - (1. - np.exp(- self.L * self.B)) * u) / self.L
+        q = self.local_random.random_sample(1)
+        x = self.inv_cdf(q=q)
         return x
-
 
 class ArmFinite(AbstractArm):
     def __init__(self, X, P, random_state=0):
